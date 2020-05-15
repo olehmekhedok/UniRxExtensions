@@ -12,6 +12,7 @@ var STRUCTURE_LIST = 'List';
 var STRUCTURE_HASH = 'Hash (keyed by "id" column)';
 
 var NOTEXPORT = 'NOEX_';
+var ARRAY = 'ARRAY_';
 
 /* Defaults for this particular spreadsheet, change as desired */
 var DEFAULT_FORMAT = FORMAT_PRETTY;
@@ -22,6 +23,7 @@ var DEFAULT_STRUCTURE = STRUCTURE_LIST;
 function onOpen() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var menuEntries = [
+    {name: "Show JSON for this sheet", functionName: "showSheet"},
     {name: "Export JSON for this sheet", functionName: "exportSheet"}
   ];
   ss.addMenu("Export JSON", menuEntries);
@@ -77,7 +79,18 @@ function exportAllSheets(e) {
   displayText_(json);
 }
 
-function exportSheet(e) {
+function exportSheet(e) 
+{
+  exportSheetToJSON(e, false);
+}
+
+function showSheet(e) {
+  
+  exportSheetToJSON(e, true);
+}
+
+function exportSheetToJSON(e, show) 
+{
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getActiveSheet();
   var rowsData = getRowsData_(sheet, getExportOptions(e));
@@ -87,19 +100,24 @@ function exportSheet(e) {
   var fullFileName = fileName + "Config.json";
   
   json = "{\""+ fileName +"\":" + json + "}";
-  //displayText_(json);
   
-  var folder = DriveApp.getFolderById("1VQerzoo5ZPcBMCpP5bTa6u4zwHZ8oV4b");
-  var allFiles = folder.getFilesByName(fullFileName);
-  while (allFiles.hasNext()) 
-  {
-    var thisFile = allFiles.next();
-    folder.removeFile(thisFile);
-  };
-  var temp = DriveApp.createFile(fullFileName, json);
-  folder.addFile(temp)
-  DriveApp.getRootFolder().removeFile(temp);
+  if(show){
+    displayText_(json);
+  }
+  else{
+    var folder = DriveApp.getFolderById("1VQerzoo5ZPcBMCpP5bTa6u4zwHZ8oV4b");
+    var allFiles = folder.getFilesByName(fullFileName);
+    while (allFiles.hasNext()) 
+    {
+      var thisFile = allFiles.next();
+      folder.removeFile(thisFile);
+    };
+    var temp = DriveApp.createFile(fullFileName, json);
+    folder.addFile(temp)
+    DriveApp.getRootFolder().removeFile(temp);
+  }
 }
+
   
 function getExportOptions(e) {
   var options = {};
@@ -205,7 +223,15 @@ function getObjects_(data, keys) {
         continue;
       }
       
-      object[key] = cellData;
+      if(key.indexOf(ARRAY) > -1)
+      {
+        key = key.replace(ARRAY, "");
+        object[key] = cellData.split(",");
+      }else
+      {
+        object[key] = cellData;
+      }
+      
       hasData = true;
     }
     
